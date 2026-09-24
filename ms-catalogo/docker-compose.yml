@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  # Microservicio 1: Catálogo
+  catalogo:
+    build: . 
+    container_name: ms_catalogo
+    ports:
+      - "8082:8080"
+    environment:
+      # Estas variables las leerá de la instancia EC2 (que a su vez las traerá de SSM)
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+    restart: always # Política de resiliencia a nivel de contenedor
+    networks:
+      - microservicios_net
+
+  # Para más adelante: Base de Datos
+  # db:
+  #   image: postgres:14 # O mysql, según el motor que uses
+  #   container_name: db_catalogo
+  #   environment:
+  #     - POSTGRES_USER=admin
+  #     - POSTGRES_PASSWORD=secret
+  #   ports:
+  #     - "5432:5432"
+  #   networks:
+  #     - microservicios_net
+
+networks:
+  microservicios_net:
+    driver: bridge

@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  bff:
+    build: .
+    container_name: ms_bff
+    ports:
+      - "8080:8080" # Expone el puerto 8080 hacia el API Manager
+    environment:
+      - ENTRA_ISSUER_URI=${ENTRA_ISSUER_URI}
+      - ENTRA_API_CLIENT_ID=${ENTRA_API_CLIENT_ID}
+      - URL_CATALOGO=${URL_CATALOGO}
+      # - URL_CLIENTES=${URL_CLIENTES} # Listo para cuando agregues este microservicio
+    restart: always
+
+
