@@ -14,7 +14,6 @@ spring:
 
 microservices:
   clientes:
-    base-url: http://localhost:8081
+    base-url: ${URL_CLIENTES:http://localhost:8081}
   catalogo:
-    base-url: http://localhost:8082
-
+    base-url: ${URL_CATALOGO:http://localhost:8082}
