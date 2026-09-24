@@ -13,7 +13,5 @@ spring:
             - ${ENTRA_API_CLIENT_ID}
 
 microservices:
-  clientes:
-    base-url: ${URL_CLIENTES:http://localhost:8081}
   catalogo:
     base-url: ${URL_CATALOGO:http://localhost:8082}
