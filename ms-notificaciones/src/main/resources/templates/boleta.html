@@ -42,12 +42,12 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Aquí iteramos sobre la lista 'items' -->
+            <!-- Iteración con formato de miles aplicado -->
             <tr th:each="item : ${items}">
                 <td th:text="${item.nombreProducto}">Tarántula</td>
-                <td th:text="'$' + ${item.precioUnitario}">$0</td>
+                <td th:text="'$' + ${#numbers.formatInteger(item.precioUnitario, 3, 'POINT')}">$0</td>
                 <td th:text="${item.cantidad}">0</td>
-                <td th:text="'$' + ${item.subtotal}">$0</td>
+                <td th:text="'$' + ${#numbers.formatInteger(item.subtotal, 3, 'POINT')}">$0</td>
             </tr>
         </tbody>
     </table>
@@ -62,15 +62,15 @@
         <tbody>
             <tr>
                 <th>Subtotal Neto:</th>
-                <td th:text="'$' + ${subtotalNeto}">$0</td>
+                <td th:text="'$' + ${#numbers.formatInteger(subtotalNeto, 3, 'POINT')}">$0</td>
             </tr>
             <tr>
                 <th>IVA (19%):</th>
-                <td th:text="'$' + ${iva}">$0</td>
+                <td th:text="'$' + ${#numbers.formatInteger(iva, 3, 'POINT')}">$0</td>
             </tr>
             <tr>
                 <th>TOTAL A PAGAR:</th>
-                <td class="total-final" th:text="'$' + ${total}">$0</td>
+                <td class="total-final" th:text="'$' + ${#numbers.formatInteger(total, 3, 'POINT')}">$0</td>
             </tr>
         </tbody>
     </table>
