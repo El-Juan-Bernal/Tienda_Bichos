@@ -725,3 +725,15 @@ body {
   font-weight: 600;
 }
 
+
+
+
+/*Para los signos + y - al sumar o restar productos al momento de comprar. */
+
+div.carrito-controles-cantidad button {
+  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+

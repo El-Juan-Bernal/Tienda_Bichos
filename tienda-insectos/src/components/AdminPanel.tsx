@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { obtenerToken } from '../token';
+import { ToastContainer, useToasts } from './Toast';
 import './AdminPanel.css';
 
 interface FormularioProducto {
@@ -40,6 +41,8 @@ export default function AdminPanel() {
   const { instance, accounts } = useMsal();
   const account = accounts[0];
   const API_URL = 'http://localhost:8080/api/productos';
+
+  const { toasts, mostrarToast, cerrarToast } = useToasts();
 
   const [pestaña, setPestaña] = useState<'agregar' | 'editar' | 'descuentos'>('agregar');
 
@@ -141,6 +144,10 @@ export default function AdminPanel() {
     ]);
   };
 
+  const avisarProductosGuardados = () => {
+    mostrarToast('exito', 'Productos guardados', 'Los productos se guardaron correctamente en la base de datos.');
+  };
+
   const guardarUnoPorUno = async (payload: ProductoPayload[], token: string): Promise<boolean> => {
     for (const item of payload) {
       const resIndividual = await fetch(API_URL, {
@@ -153,7 +160,11 @@ export default function AdminPanel() {
       });
       if (!resIndividual.ok) {
         const errDetalle = await resIndividual.text();
-        alert(`Error al guardar "${item.nombre}" (Código ${resIndividual.status}): ${errDetalle}`);
+        mostrarToast(
+          'error',
+          `No se pudo guardar "${item.nombre}"`,
+          `Código ${resIndividual.status}: ${errDetalle}`
+        );
         return false;
       }
     }
@@ -163,7 +174,7 @@ export default function AdminPanel() {
   const guardarMasivo = async () => {
     const errorValidacion = validarFormularios();
     if (errorValidacion) {
-      alert(errorValidacion);
+      mostrarToast('aviso', 'Revisa el formulario', errorValidacion);
       return;
     }
 
@@ -192,29 +203,37 @@ export default function AdminPanel() {
       if (response.status === 404 || response.status === 405) {
         const exitoIndividual = await guardarUnoPorUno(payload, token);
         if (exitoIndividual) {
-          alert('¡Productos guardados exitosamente en la base de datos!');
+          avisarProductosGuardados();
           limpiarFormularios();
         }
         return;
       }
 
       if (response.ok) {
-        alert('¡Productos guardados exitosamente en la base de datos!');
+        avisarProductosGuardados();
         limpiarFormularios();
       } else {
         const errorText = await response.text();
-        alert(`No se pudo guardar en BD (Error ${response.status}): ${errorText || 'Revisa los logs del BFF/Backend'}`);
+        mostrarToast(
+          'error',
+          'No se pudo guardar en la base de datos',
+          `Error ${response.status}: ${errorText || 'Revisa los logs del BFF/Backend'}`
+        );
       }
     } catch (error) {
       console.error('Error al guardar masivo:', error);
-      alert('Error de conexión con el servidor BFF. Verifica que esté corriendo en el puerto 8080.');
+      mostrarToast(
+        'error',
+        'Error de conexión',
+        'No pudimos comunicarnos con el servidor BFF. Verifica que esté corriendo en el puerto 8080.'
+      );
     }
   };
 
   const actualizarProducto = async () => {
     if (!productoEdicion) return;
     if (productoEdicion.precio < 0 || productoEdicion.stock < 0) {
-      alert('El precio y el stock no pueden ser valores negativos.');
+      mostrarToast('aviso', 'Valores no válidos', 'El precio y el stock no pueden ser negativos.');
       return;
     }
 
@@ -229,15 +248,16 @@ export default function AdminPanel() {
         body: JSON.stringify(productoEdicion),
       });
       if (response.ok) {
-        alert(`Producto "${productoEdicion.nombre}" actualizado correctamente.`);
+        mostrarToast('exito', 'Producto actualizado', `"${productoEdicion.nombre}" se actualizó correctamente.`);
         setProductoEdicion(null);
         await cargarProductos();
       } else {
         const err = await response.text();
-        alert(`Error al actualizar (Código ${response.status}): ${err}`);
+        mostrarToast('error', 'No se pudo actualizar el producto', `Código ${response.status}: ${err}`);
       }
     } catch (error) {
       console.error('Error al actualizar:', error);
+      mostrarToast('error', 'Error de conexión', 'No pudimos actualizar el producto. Inténtalo de nuevo.');
     }
   };
 
@@ -253,15 +273,23 @@ export default function AdminPanel() {
         body: JSON.stringify(producto),
       });
       if (response.ok) {
-        alert(`¡Descuento de ${producto.porcentajeDescuento}% guardado en BD para "${producto.nombre}"!`);
+        if (producto.porcentajeDescuento > 0) {
+          mostrarToast(
+            'exito',
+            'Descuento aplicado',
+            `Se guardó un ${producto.porcentajeDescuento}% de descuento para "${producto.nombre}".`
+          );
+        } else {
+          mostrarToast('exito', 'Descuento eliminado', `"${producto.nombre}" vuelve a su precio base.`);
+        }
         await cargarProductos();
       } else {
         const err = await response.text();
-        alert(`El servidor rechazó el cambio (Código ${response.status}): ${err}`);
+        mostrarToast('error', 'El servidor rechazó el cambio', `Código ${response.status}: ${err}`);
       }
     } catch (error) {
       console.error('Error al guardar descuento:', error);
-      alert('Error de red al intentar actualizar el descuento.');
+      mostrarToast('error', 'Error de red', 'No se pudo actualizar el descuento. Inténtalo de nuevo.');
     }
   };
 
@@ -288,10 +316,11 @@ export default function AdminPanel() {
         );
       } else {
         const err = await response.text();
-        alert(`No se pudo cambiar el estado (Código ${response.status}): ${err}`);
+        mostrarToast('error', 'No se pudo cambiar el estado', `Código ${response.status}: ${err}`);
       }
     } catch (error) {
       console.error('Error al cambiar estado:', error);
+      mostrarToast('error', 'Error de conexión', 'No se pudo cambiar el estado del producto.');
     }
   };
 
@@ -681,6 +710,8 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      <ToastContainer toasts={toasts} onCerrar={cerrarToast} />
     </div>
   );
 }

@@ -1,0 +1,115 @@
+/* Íconos SVG (heredan el color del texto) */
+.carrito-icono {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+/* Botón "Carrito (n)" de la cabecera: ícono + texto */
+.carrito-boton-contenido {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+/* Título del carrito con "Vaciar carrito" a la derecha */
+.carrito-encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.carrito-btn-vaciar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.9rem;
+  background: #ffffff;
+  color: #b91c1c;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.carrito-btn-vaciar:hover {
+  background: #fee2e2;
+}
+
+/* Basurero de cada producto */
+.carrito-btn-basurero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  background: none;
+  color: #b91c1c;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.carrito-btn-basurero:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+.carrito-btn-basurero .carrito-icono {
+  width: 20px;
+  height: 20px;
+}
+
+.carrito-btn-vaciar:focus-visible,
+.carrito-btn-basurero:focus-visible,
+.carrito-btn-confirmar-vaciar:focus-visible,
+.carrito-btn-cancelar:focus-visible {
+  outline: 2px solid #b91c1c;
+  outline-offset: 2px;
+}
+
+/* Stock bajo el precio unitario */
+.carrito-stock-item {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+/* Confirmación de "Vaciar carrito" */
+.carrito-confirmar-acciones {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.carrito-btn-confirmar-vaciar {
+  padding: 10px 20px;
+  background: #b91c1c;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.carrito-btn-confirmar-vaciar:hover {
+  background: #991b1b;
+}
+
+.carrito-btn-cancelar {
+  padding: 10px 20px;
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.carrito-btn-cancelar:hover {
+  background: #e5e7eb;
+}
+

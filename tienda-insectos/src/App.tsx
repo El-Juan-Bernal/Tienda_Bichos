@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { InteractionStatus } from '@azure/msal-browser';
 import { tokenRequest } from './authConfig';
@@ -6,7 +6,9 @@ import { obtenerToken } from './token';
 import { obtenerProductos } from './api';
 import type { Producto } from './api';
 import './App.css';
+import './Carrito.css';
 import AdminPanel from './components/AdminPanel';
+import { ToastContainer, useToasts } from './components/Toast';
 
 type Vista = 'inicio' | 'catalogo' | 'carrito' | 'admin';
 type Filtro = 'TODOS' | 'VOLADOR' | 'TERRESTRE' | 'ACUATICO';
@@ -77,6 +79,8 @@ const recomendados = [
 const formatoPrecio = new Intl.NumberFormat('es-CL', {
   style: 'currency',
   currency: 'CLP',
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
 });
 
 const etiquetasFiltro: Record<Filtro, string> = {
@@ -86,11 +90,103 @@ const etiquetasFiltro: Record<Filtro, string> = {
   ACUATICO: 'Acuáticos',
 };
 
+function precioUnitario(p: Producto): number {
+  const desc = p.porcentajeDescuento || 0;
+  return desc > 0 ? Math.round(p.precio * (1 - desc / 100)) : p.precio;
+}
+
+/**
+ * Compara el carrito guardado con el catálogo actual del servidor:
+ * - quita productos que ya no existen, están deshabilitados o agotados
+ * - ajusta la cantidad si supera el stock disponible
+ * - actualiza los datos del producto (precio, descuento, stock) y avisa si el precio cambió
+ */
+function validarContraCatalogo(carrito: ItemCarrito[], catalogo: Producto[]) {
+  const mensajes: string[] = [];
+  const carritoValidado: ItemCarrito[] = [];
+
+  for (const item of carrito) {
+    const actual = catalogo.find((p) => p.id === item.producto.id);
+    const nombre = item.producto.nombre;
+
+    if (!actual || actual.activo === false) {
+      mensajes.push(`"${nombre}" ya no está disponible y se quitó del carrito.`);
+      continue;
+    }
+
+    const stock = actual.stock ?? 0;
+    if (stock <= 0) {
+      mensajes.push(`"${nombre}" está agotado y se quitó del carrito.`);
+      continue;
+    }
+
+    let cantidad = item.cantidad;
+    if (cantidad > stock) {
+      cantidad = stock;
+      mensajes.push(`Ajustamos "${nombre}" a ${stock} unidad(es), que es el stock disponible.`);
+    }
+
+    const precioAntes = precioUnitario(item.producto);
+    const precioAhora = precioUnitario(actual);
+    if (precioAntes !== precioAhora) {
+      mensajes.push(
+        `El precio de "${nombre}" cambió de ${formatoPrecio.format(precioAntes)} a ${formatoPrecio.format(precioAhora)}.`
+      );
+    }
+
+    carritoValidado.push({ producto: actual, cantidad });
+  }
+
+  return { carritoValidado, mensajes };
+}
+
+function IconoBasura() {
+  return (
+    <svg
+      className="carrito-icono"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 6h18" />
+      <path d="M8 6V4h8v2" />
+      <path d="M19 6l-1 14H6L5 6" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+function IconoCarrito() {
+  return (
+    <svg
+      className="carrito-icono"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6" />
+    </svg>
+  );
+}
+
 export default function App() {
   const { instance, accounts, inProgress } = useMsal();
   const account = accounts[0];
   const bloqueado = inProgress !== InteractionStatus.None;
   const isAdmin = (account?.idTokenClaims as { roles?: string[] })?.roles?.includes('Admin') || false;
+
+  const { toasts, mostrarToast, cerrarToast } = useToasts();
 
   const [vista, setVista] = useState<Vista>(() => {
     return (sessionStorage.getItem('vista_actual') as Vista) || 'inicio';
@@ -98,7 +194,6 @@ export default function App() {
 
   const [salida, setSalida] = useState('');
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [productosCargados, setProductosCargados] = useState(false);
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [errorProductos, setErrorProductos] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('TODOS');
@@ -110,19 +205,46 @@ export default function App() {
   const [productoSeleccionado, setProductoSeleccionado] = useState<Producto | null>(null);
   const [cantidadModal, setCantidadModal] = useState<number>(1);
   const [mostrarModalPago, setMostrarModalPago] = useState(false);
+  const [mostrarModalVaciar, setMostrarModalVaciar] = useState(false);
+
+  const cuentaRevisadaRef = useRef<string | null>(null);
+  const revisandoCarritoRef = useRef(false);
   const [procesandoPago, setProcesandoPago] = useState(false);
 
   useEffect(() => {
     sessionStorage.setItem('vista_actual', vista);
-    if (vista === 'catalogo' && !productosCargados && account) {
+    // Se vuelve a consultar el catálogo cada vez que se entra a esa vista,
+    // así los cambios hechos en el panel Admin se reflejan sin refrescar la página.
+    if (vista === 'catalogo' && account) {
       void cargarProductosCatalogo();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vista, productosCargados, account]);
+  }, [vista, account?.homeAccountId]);
 
   useEffect(() => {
     localStorage.setItem('carrito_insectos', JSON.stringify(carrito));
   }, [carrito]);
+
+  // Revisa el carrito guardado contra el catálogo actual:
+  // al iniciar sesión (por ejemplo, días después) y cada vez que se abre el carrito.
+  useEffect(() => {
+    const idCuenta = account?.homeAccountId;
+    if (!idCuenta) return;
+
+    const primeraVez = cuentaRevisadaRef.current !== idCuenta;
+    cuentaRevisadaRef.current = idCuenta;
+    if (carrito.length === 0) return;
+
+    if ((vista === 'carrito' || primeraVez) && !revisandoCarritoRef.current) {
+      revisandoCarritoRef.current = true;
+      sincronizarCarrito(false)
+        .catch((error) => console.error('No se pudo revisar el carrito:', error))
+        .finally(() => {
+          revisandoCarritoRef.current = false;
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista, account?.homeAccountId]);
 
   async function cargarProductosCatalogo() {
     setCargandoProductos(true);
@@ -131,12 +253,26 @@ export default function App() {
       const datos = await obtenerProductos(instance, account);
       const activos = datos.filter((p) => p.activo !== false);
       setProductos(activos);
-      setProductosCargados(true);
     } catch (error) {
       setErrorProductos(error instanceof Error ? error.message : String(error));
     } finally {
       setCargandoProductos(false);
     }
+  }
+
+  /** Devuelve true si el carrito estaba correcto; false si hubo que corregirlo. */
+  async function sincronizarCarrito(antesDePagar: boolean): Promise<boolean> {
+    const catalogo = await obtenerProductos(instance, account);
+    const { carritoValidado, mensajes } = validarContraCatalogo(carrito, catalogo);
+
+    if (mensajes.length === 0) return true;
+
+    setCarrito(carritoValidado);
+    const detalle = antesDePagar
+      ? [...mensajes, '', 'No se procesó el pago. Revisa tu carrito y vuelve a intentarlo.']
+      : mensajes;
+    mostrarToast('aviso', 'Actualizamos tu carrito', detalle.join('\n'), 15000);
+    return false;
   }
 
   const abrirDetalleProducto = (p: Producto) => {
@@ -150,7 +286,11 @@ export default function App() {
     const stockDisponible = producto.stock ?? 0;
 
     if (cantidadActualEnCarrito + cantidadAñadir > stockDisponible) {
-      alert(`No puedes agregar más unidades. El stock máximo disponible para este ejemplar es de ${stockDisponible} unidades.`);
+      mostrarToast(
+        'aviso',
+        'Stock insuficiente',
+        `No puedes agregar más unidades. El stock máximo disponible para este ejemplar es de ${stockDisponible} unidades.`
+      );
       return;
     }
 
@@ -165,7 +305,11 @@ export default function App() {
       return [...prev, { producto, cantidad: cantidadAñadir }];
     });
 
-    alert(`¡Se han agregado ${cantidadAñadir} unidad(es) de "${producto.nombre}" al carrito!`);
+    mostrarToast(
+      'exito',
+      'Agregado al carrito',
+      `${cantidadAñadir} unidad(es) de "${producto.nombre}".`
+    );
     setProductoSeleccionado(null);
   };
 
@@ -176,7 +320,7 @@ export default function App() {
     const stockDisponible = itemActual.producto.stock ?? 0;
 
     if (nuevaCantidad > stockDisponible) {
-      alert(`Stock máximo alcanzado (${stockDisponible} unidades disponibles).`);
+      mostrarToast('aviso', 'Stock máximo alcanzado', `Hay ${stockDisponible} unidades disponibles.`);
       return;
     }
 
@@ -193,7 +337,17 @@ export default function App() {
   };
 
   const eliminarItemCarrito = (id: number) => {
-    setCarrito((prev) => prev.filter((item) => item.producto.id !== id));
+    const item = carrito.find((i) => i.producto.id === id);
+    setCarrito((prev) => prev.filter((i) => i.producto.id !== id));
+    if (item) {
+      mostrarToast('info', 'Producto eliminado', `"${item.producto.nombre}" salió del carrito.`);
+    }
+  };
+
+  const vaciarCarrito = () => {
+    setCarrito([]);
+    setMostrarModalVaciar(false);
+    mostrarToast('info', 'Carrito vaciado', 'Quitaste todos los productos del carrito.');
   };
 
   const totalItemsCarrito = carrito.reduce((acc, item) => acc + item.cantidad, 0);
@@ -205,7 +359,12 @@ export default function App() {
 
   const ejecutarPagoReal = async (pasarela: string) => {
     setProcesandoPago(true);
+    setMostrarModalPago(false); // el recuadro de pasarelas desaparece de inmediato
     try {
+      // Antes de cobrar, se confirma que todo siga disponible con el stock actual
+      const carritoCorrecto = await sincronizarCarrito(true);
+      if (!carritoCorrecto) return;
+
       const tokenResponse: any = await obtenerToken(instance, account);
       const token = typeof tokenResponse === 'string'
         ? tokenResponse
@@ -225,7 +384,7 @@ export default function App() {
 
       if (!respuesta.ok) {
         const msgError = await respuesta.text();
-        alert(`No se pudo completar el pedido: ${msgError}`);
+        mostrarToast('error', 'No se pudo completar el pedido', msgError);
         return;
       }
 
@@ -235,19 +394,30 @@ export default function App() {
       const respuestaPatch = await httpActualizarEstadoPedido(pedidoId, 'ACEPTADO', token);
 
       if (!respuestaPatch.ok) {
-        alert('El pedido se creó, pero hubo un error al confirmar el pago en el servidor.');
+        mostrarToast(
+          'aviso',
+          'Pedido creado, pago sin confirmar',
+          'El pedido se creó, pero hubo un error al confirmar el pago en el servidor.'
+        );
         return;
       }
 
-      alert(`¡Pago aprobado mediante ${pasarela}! \nSu compra ha sido realizada con éxito\nSu boleta será enviada a su correo.`);
+      mostrarToast(
+        'exito',
+        `¡Pago aprobado con ${pasarela}!`,
+        'Tu compra se realizó con éxito.\nTu boleta será enviada a tu correo.'
+      );
       setCarrito([]);
       localStorage.removeItem('carrito_insectos');
-      setMostrarModalPago(false);
       await cargarProductosCatalogo();
       setVista('catalogo');
     } catch (error) {
       console.error('Error al procesar pago:', error);
-      alert('Error de conexión con el servidor al procesar el pago.');
+      mostrarToast(
+        'error',
+        'Error de conexión',
+        'No pudimos comunicarnos con el servidor para procesar el pago. Inténtalo de nuevo.'
+      );
     } finally {
       setProcesandoPago(false);
     }
@@ -315,7 +485,10 @@ export default function App() {
         </nav>
         {account && (
           <button type="button" className="carrito-badge-container" onClick={() => setVista('carrito')}>
-            <span>Carrito ({totalItemsCarrito})</span>
+            <span className="carrito-boton-contenido">
+              <IconoCarrito />
+              Carrito ({totalItemsCarrito})
+            </span>
           </button>
         )}
       </header>
@@ -410,7 +583,15 @@ export default function App() {
 
         {vista === 'carrito' && (
           <section className="carrito-seccion">
-            <h2>Tu Carrito de Compras</h2>
+            <div className="carrito-encabezado">
+              <h2>Tu Carrito de Compras</h2>
+              {carrito.length > 0 && (
+                <button type="button" className="carrito-btn-vaciar" onClick={() => setMostrarModalVaciar(true)}>
+                  <IconoBasura />
+                  Vaciar carrito
+                </button>
+              )}
+            </div>
             {carrito.length === 0 ? (
               <p className="aviso-login">Tu carrito está vacío. ¡Explora el catálogo y añade ejemplares!</p>
             ) : (
@@ -425,6 +606,7 @@ export default function App() {
                         <div className="carrito-item-info">
                           <h4>{item.producto.nombre}</h4>
                           <p>Precio unitario: {formatoPrecio.format(precioFinal)}</p>
+                          <p className="carrito-stock-item">Stock disponible: {item.producto.stock ?? 0}</p>
                         </div>
                         <div className="carrito-controles-cantidad">
                           <button type="button" onClick={() => cambiarCantidadCarrito(item.producto.id, -1)}>-</button>
@@ -432,7 +614,14 @@ export default function App() {
                           <button type="button" onClick={() => cambiarCantidadCarrito(item.producto.id, 1)}>+</button>
                         </div>
                         <p className="carrito-item-subtotal">{formatoPrecio.format(precioFinal * item.cantidad)}</p>
-                        <button type="button" className="btn-eliminar-item" onClick={() => eliminarItemCarrito(item.producto.id)}>X</button>
+                        <button
+                          type="button"
+                          className="carrito-btn-basurero"
+                          aria-label={`Eliminar ${item.producto.nombre} del carrito`}
+                          onClick={() => eliminarItemCarrito(item.producto.id)}
+                        >
+                          <IconoBasura />
+                        </button>
                       </div>
                     );
                   })}
@@ -447,7 +636,7 @@ export default function App() {
                     <span>Total a Pagar:</span>
                     <span>{formatoPrecio.format(montoTotalCarrito)}</span>
                   </div>
-                  <button type="button" className="btn-guardar" onClick={() => setMostrarModalPago(true)}>
+                  <button type="button" className="btn-guardar" disabled={procesandoPago} onClick={() => setMostrarModalPago(true)}>
                     Proceder al Pago
                   </button>
                 </div>
@@ -501,7 +690,11 @@ export default function App() {
                         if (cantidadModal < stockMax) {
                           setCantidadModal((prev) => prev + 1);
                         } else {
-                          alert(`Has alcanzado el límite de stock disponible (${stockMax} unidades).`);
+                          mostrarToast(
+                            'aviso',
+                            'Límite de stock alcanzado',
+                            `Solo hay ${stockMax} unidades disponibles.`
+                          );
                         }
                       }}
                     >
@@ -527,27 +720,42 @@ export default function App() {
           <div className="modal-contenido modal-pago">
             <h2>Selecciona tu Pasarela de Pago</h2>
             <p className="subtitulo-pago">Monto total a cancelar: <strong>{formatoPrecio.format(montoTotalCarrito)}</strong></p>
-            {procesandoPago ? (
-              <p className="cargando-pago">Procesando pago de forma segura y generando su comprobante...</p>
-            ) : (
-              <div className="pasarelas-grid">
-                <button type="button" className="btn-pasarela" onClick={() => void ejecutarPagoReal('Webpay Plus')}>
-                  <img src="/webpay.png" alt="Webpay Plus" />
-                  <span>Webpay Plus</span>
-                </button>
-                <button type="button" className="btn-pasarela" onClick={() => void ejecutarPagoReal('Mercado Pago')}>
-                  <img src="/mercadopago.png" alt="Mercado Pago" />
-                  <span>Mercado Pago</span>
-                </button>
-                <button type="button" className="btn-pasarela" onClick={() => void ejecutarPagoReal('Khipu')}>
-                  <img src="/khipu.png" alt="Khipu" />
-                  <span>Khipu</span>
-                </button>
-              </div>
-            )}
-            <button type="button" className="btn-cancelar-pago" disabled={procesandoPago} onClick={() => setMostrarModalPago(false)}>
+            <div className="pasarelas-grid">
+              <button type="button" className="btn-pasarela" onClick={() => void ejecutarPagoReal('Webpay Plus')}>
+                <img src="/webpay.png" alt="Webpay Plus" />
+                <span>Webpay Plus</span>
+              </button>
+              <button type="button" className="btn-pasarela" onClick={() => void ejecutarPagoReal('Mercado Pago')}>
+                <img src="/mercadopago.png" alt="Mercado Pago" />
+                <span>Mercado Pago</span>
+              </button>
+              <button type="button" className="btn-pasarela" onClick={() => void ejecutarPagoReal('Khipu')}>
+                <img src="/khipu.png" alt="Khipu" />
+                <span>Khipu</span>
+              </button>
+            </div>
+            <button type="button" className="btn-cancelar-pago" onClick={() => setMostrarModalPago(false)}>
               Cancelar
             </button>
+          </div>
+        </div>
+      )}
+
+      {mostrarModalVaciar && (
+        <div className="modal-overlay">
+          <div className="modal-contenido modal-pago">
+            <h2>¿Vaciar el carrito?</h2>
+            <p className="subtitulo-pago">
+              Se quitarán todos los productos ({totalItemsCarrito} unidades) de tu carrito.
+            </p>
+            <div className="carrito-confirmar-acciones">
+              <button type="button" className="carrito-btn-confirmar-vaciar" onClick={vaciarCarrito}>
+                Sí, vaciar
+              </button>
+              <button type="button" className="carrito-btn-cancelar" onClick={() => setMostrarModalVaciar(false)}>
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -569,6 +777,8 @@ export default function App() {
           <p>&copy; {new Date().getFullYear()} Todos los derechos reservados.</p>
         </div>
       </footer>
+
+      <ToastContainer toasts={toasts} onCerrar={cerrarToast} />
     </div>
   );
 }
