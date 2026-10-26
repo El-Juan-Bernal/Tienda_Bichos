@@ -12,6 +12,8 @@ export interface Producto {
   stock: number;
   imagenUrl: string;
   categoria: string;
+  porcentajeDescuento?: number;
+  activo?: boolean;
 }
 
 async function llamarBff<T>(
@@ -46,3 +48,4 @@ export function obtenerProductos(
 ): Promise<Producto[]> {
   return llamarBff<Producto[]>(instance, account, '/api/productos');
 }
+

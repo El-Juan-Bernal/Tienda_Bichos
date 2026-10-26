@@ -15,19 +15,22 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 public class SecurityConfig {
 
+  private static final String SCOPE_USER = "SCOPE_access_as_user";
+
   @Bean
-  SecurityFilterChain security(HttpSecurity http) throws Exception {
+  @SuppressWarnings("java:S4502")
+  SecurityFilterChain security(HttpSecurity http) {
     return http
         .csrf(csrf -> csrf.disable())
-        .cors(Customizer.withDefaults()) /*CORS */
+        .cors(Customizer.withDefaults())
         .sessionManagement(s -> s.sessionCreationPolicy(
             SessionCreationPolicy.STATELESS
         ))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers(HttpMethod.GET, "/api/data")
-            .hasAuthority("SCOPE_access_as_user")
-            .requestMatchers(HttpMethod.GET, "/api/productos", "/api/productos/**")
-            .hasAuthority("SCOPE_access_as_user")
+            .requestMatchers(HttpMethod.GET, "/api/data").hasAuthority(SCOPE_USER)
+            .requestMatchers("/api/productos", "/api/productos/**").hasAuthority(SCOPE_USER)
+            .requestMatchers(HttpMethod.POST, "/api/pedidos").hasAuthority(SCOPE_USER)
+            .requestMatchers(HttpMethod.PATCH, "/api/pedidos/**").hasAuthority(SCOPE_USER)
             .anyRequest().denyAll()
         )
         .oauth2ResourceServer(oauth ->
@@ -36,17 +39,17 @@ public class SecurityConfig {
         .build();
   }
 
-  /* CORS  
-Para que acepte peticiones desde localhost:5173 con metodo GET y que incluya los headers Authorization y Content-Type */
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
     configuration.setAllowedOrigins(List.of("http://localhost:5173"));
-    configuration.setAllowedMethods(List.of("GET", "OPTIONS"));
-    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type")); // Autorization, Content-Type
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+    configuration.setAllowCredentials(true);
 
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
   }
 }
+
