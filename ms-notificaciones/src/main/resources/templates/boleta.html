@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Boleta de Compra</title>
+    <style>
+        body { font-family: 'Arial', sans-serif; color: #333; margin: 40px; }
+        .header { text-align: center; border-bottom: 2px solid #2c3e50; padding-bottom: 20px; }
+        .tienda-nombre { color: #27ae60; font-size: 28px; font-weight: bold; }
+        .info-pedido { margin-top: 20px; font-size: 14px; color: #555; }
+        table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+        th { background-color: #f2f2f2; border: 1px solid #ddd; padding: 12px; text-align: left; }
+        td { border: 1px solid #ddd; padding: 12px; }
+        .totales { margin-top: 20px; width: 50%; float: right; }
+        /* Ajustes para la tabla de totales para que cumpla el estándar sin dañar el diseño */
+        .totales th, .totales td { border: none; padding: 8px; background-color: transparent; }
+        .totales th { text-align: right; font-weight: bold; color: #333; }
+        .totales td { text-align: right; }
+        .total-final { font-size: 18px; font-weight: bold; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="tienda-nombre">Tienda de insectos H&J SpA</div>
+        <div>Boleta de Compra - Comprobante Electrónico</div>
+        <div>Proyecto DuocUC</div>
+    </div>
+
+    <div class="info-pedido">
+        <p><strong>Pedido Nro:</strong> <span th:text="${pedidoId}"></span></p>
+        <p><strong>Cliente:</strong> <span th:text="${clienteEmail}"></span></p>
+        <p><strong>Fecha:</strong> <span th:text="${#dates.format(#dates.createNow(), 'dd/MM/yyyy HH:mm')}"></span></p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Precio Unit.</th>
+                <th>Cant.</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí iteramos sobre la lista 'items' -->
+            <tr th:each="item : ${items}">
+                <td th:text="${item.nombreProducto}">Tarántula</td>
+                <td th:text="'$' + ${item.precioUnitario}">$0</td>
+                <td th:text="${item.cantidad}">0</td>
+                <td th:text="'$' + ${item.subtotal}">$0</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <table class="totales">
+        <thead>
+            <tr style="display: none;">
+                <th>Concepto</th>
+                <th>Monto</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th>Subtotal Neto:</th>
+                <td th:text="'$' + ${subtotalNeto}">$0</td>
+            </tr>
+            <tr>
+                <th>IVA (19%):</th>
+                <td th:text="'$' + ${iva}">$0</td>
+            </tr>
+            <tr>
+                <th>TOTAL A PAGAR:</th>
+                <td class="total-final" th:text="'$' + ${total}">$0</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
+

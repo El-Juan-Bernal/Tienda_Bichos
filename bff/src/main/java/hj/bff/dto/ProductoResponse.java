@@ -6,7 +6,10 @@ public record ProductoResponse(
     String descripcion,
     Long precio,
     Integer stock,
+    Integer porcentajeDescuento,
     String imagenUrl,
-    String categoria
+    String categoria,
+    Boolean activo
 ) {
 }
+

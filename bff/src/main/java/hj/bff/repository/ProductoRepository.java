@@ -2,8 +2,10 @@ package hj.bff.repository;
 
 import hj.bff.dto.ProductoResponse;
 import java.util.List;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.client.RestClient;
 
@@ -36,4 +38,45 @@ public class ProductoRepository {
         .retrieve()
         .body(ProductoResponse.class);
   }
+
+  public ProductoResponse crear(ProductoResponse request) {
+    return restClient
+        .post()
+        .uri("/api/productos")
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(request)
+        .retrieve()
+        .body(ProductoResponse.class);
+  }
+
+  public List<ProductoResponse> crearMasivo(List<ProductoResponse> requests) {
+    return restClient
+        .post()
+        .uri("/api/productos/masivo")
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(requests)
+        .retrieve()
+        .body(new ParameterizedTypeReference<List<ProductoResponse>>() {});
+  }
+
+  public ProductoResponse actualizar(Long id, ProductoResponse request) {
+    return restClient
+        .put()
+        .uri("/api/productos/{id}", id)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(request)
+        .retrieve()
+        .body(ProductoResponse.class);
+  }
+
+  public void cambiarEstado(Long id, Boolean activo) {
+    restClient
+        .put()
+        .uri("/api/productos/{id}/estado", id)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("activo", activo))
+        .retrieve()
+        .toBodilessEntity();
+  }
 }
+
