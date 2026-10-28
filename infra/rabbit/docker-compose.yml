@@ -1,0 +1,23 @@
+services:
+  rabbitmq-principal:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq-principal
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: unless-stopped
+
+  rabbitmq-proveedores:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq-proveedores
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASS}
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    restart: unless-stopped
+

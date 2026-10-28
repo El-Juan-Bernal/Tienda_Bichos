@@ -4,13 +4,18 @@ server:
 spring:
   application:
     name: ms-notificaciones
+
+  # Carga las variables del .env (GMAIL_USER, GMAIL_APP_PASS, SLACK_WEBHOOK_URL)
   config:
     import: optional:file:.env[.properties]
+
+  # RabbitMQ principal
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
+    host: ${RABBIT_HOST:localhost}
+    port: ${RABBIT_PORT:5672}
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASS:guest}
+
   mail:
     host: smtp.gmail.com
     port: 587
