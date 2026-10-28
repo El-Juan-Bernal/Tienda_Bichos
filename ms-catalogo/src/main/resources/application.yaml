@@ -4,19 +4,26 @@ server:
 spring:
   application:
     name: ms-catalogo
+
+  # Lee el .env cuando corres con mvnw en tu PC (en Docker/AWS no hace falta)
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
-    url: jdbc:mysql://localhost:3306/tienda_bichos_db?useSSL=false&serverTimezone=UTC
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/tienda_bichos_db?useSSL=false&serverTimezone=UTC}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
-  
+
+  # RabbitMQ secundario (el de proveedores)
   rabbitmq:
-    host: localhost
-    port: 5673
-    username: guest
-    password: guest
+    host: ${RABBIT_PROV_HOST:localhost}
+    port: ${RABBIT_PROV_PORT:5673}
+    username: ${RABBIT_USER:guest}
+    password: ${RABBIT_PASS:guest}
 

@@ -1,0 +1,15 @@
+services:
+  notificaciones:
+    build: .
+    container_name: ms_notificaciones
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m
+      - RABBIT_HOST=${RABBIT_HOST}
+      - RABBIT_PORT=${RABBIT_PORT}
+      - RABBIT_USER=${RABBIT_USER}
+      - RABBIT_PASS=${RABBIT_PASS}
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASS=${GMAIL_APP_PASS}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+    restart: unless-stopped
+

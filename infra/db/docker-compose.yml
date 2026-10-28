@@ -1,0 +1,28 @@
+services:
+  db-insectos:
+    image: mysql:8.0
+    container_name: mysql-tienda-bichos
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: tienda_bichos_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: unless-stopped
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin-tienda-bichos
+    environment:
+      PMA_HOST: db-insectos
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "8083:80"
+    depends_on:
+      - db-insectos
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
