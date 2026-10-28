@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Orden de Compra - Tienda de Insectos H&J SpA</title>
+    <style>
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; border: 1px solid #ddd; padding: 30px; border-radius: 8px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #2c3e50; padding-bottom: 20px; margin-bottom: 20px; }
+        .company-details h1 { margin: 0; color: #2c3e50; font-size: 24px; }
+        .company-details p { margin: 5px 0; font-size: 14px; color: #7f8c8d; }
+        .po-details { text-align: right; }
+        .po-details h2 { margin: 0; color: #e74c3c; font-size: 20px; }
+        .section-title { font-size: 16px; font-weight: bold; margin-bottom: 10px; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .info-grid { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .info-box { width: 48%; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+        th { background-color: #2c3e50; color: white; padding: 12px; text-align: left; font-size: 14px; }
+        td { padding: 12px; border-bottom: 1px solid #ddd; font-size: 14px; }
+        .footer { text-align: center; margin-top: 40px; font-size: 12px; color: #95a5a6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="company-details">
+                <h1>Tienda de Insectos H&J SpA</h1>
+                <p>Av. Siempre Viva 742, Concepción</p>
+                <p>RUT: 76.543.210-K</p>
+                <p>contacto@tiendahyj.cl</p>
+            </div>
+            <div class="po-details">
+                <h2>ORDEN DE COMPRA</h2>
+                <p><strong>Nº OC:</strong> <span th:text="${numeroOrden}">OC-10023</span></p>
+                <p><strong>Fecha:</strong> <span th:text="${fechaEmision}">27/10/2026</span></p>
+            </div>
+        </div>
+
+        <div class="info-grid">
+            <div class="info-box">
+                <div class="section-title">DATOS DEL PROVEEDOR</div>
+                <p><strong>Categoría:</strong> <span th:text="${categoriaProveedor}">Insectos Terrestres</span></p>
+                <p><strong>Email:</strong> <span th:text="${emailProveedor}">proveedor@ejemplo.com</span></p>
+            </div>
+            <div class="info-box">
+                <div class="section-title">INSTRUCCIONES DE ENTREGA</div>
+                <p><strong>Bodega Central:</strong> H&J SpA</p>
+                <p><strong>Plazo requerido:</strong> 5 días hábiles</p>
+            </div>
+        </div>
+
+        <div class="section-title">DETALLE DE LOS PRODUCTOS REQUERIDOS</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código ID</th>
+                    <th>Descripción del Producto</th>
+                    <th>Cantidad Requerida</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td th:text="${productoId}">1045</td>
+                    <td th:text="${productoNombre}">Escarabajo Hércules</td>
+                    <td><strong>50 unidades</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>Este documento es generado automáticamente por el sistema de reabastecimiento B2B.</p>
+            <p>Por favor, confirme la recepción de esta orden de compra respondiendo a este correo.</p>
+        </div>
+    </div>
+</body>
+</html>
+
