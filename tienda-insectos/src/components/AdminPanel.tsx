@@ -40,7 +40,7 @@ interface ProductoEdit {
 export default function AdminPanel() {
   const { instance, accounts } = useMsal();
   const account = accounts[0];
-  const API_URL = 'http://localhost:8080/api/productos';
+  const API_URL = `${import.meta.env.VITE_BFF_BASE_URL?.replace(/\/$/, '')}/api/productos`;
 
   const { toasts, mostrarToast, cerrarToast } = useToasts();
 
