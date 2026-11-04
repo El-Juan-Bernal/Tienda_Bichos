@@ -78,5 +78,23 @@ public class ProductoRepository {
         .retrieve()
         .toBodilessEntity();
   }
+
+  public List<ProductoResponse> listarDestacados() {
+    return restClient
+        .get()
+        .uri("/api/productos/destacados")
+        .retrieve()
+        .body(new ParameterizedTypeReference<List<ProductoResponse>>() {});
+  }
+
+  public ProductoResponse cambiarDestacado(Long id, Boolean destacado) {
+    return restClient
+        .put()
+        .uri("/api/productos/{id}/destacado", id)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("destacado", destacado))
+        .retrieve()
+        .body(ProductoResponse.class);
+  }
 }
 

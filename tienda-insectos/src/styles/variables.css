@@ -1,0 +1,31 @@
+:root {
+  /* Base */
+  --blanco: #ffffff;
+  --fondo-suave: #faf8f4;
+  --beige: #f7f1e8;
+
+  /* Verdes */
+  --verde: #2f6b4f;
+  --verde-oscuro: #245640;
+  --verde-claro: #9fd0b3;
+  --verde-suave: #e8f1ea;
+
+  /* Cafés */
+  --cafe: #4a3228;
+  --cafe-medio: #6b4a3a;
+  --cafe-claro: #a9785f;
+
+  /* Texto y bordes */
+  --texto: #2f2620;
+  --texto-suave: #6b5d52;
+  --borde: #e6e0d6;
+  --rojo: #b91c1c;
+
+  /* Medidas */
+  --fuente: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --ancho-max: 1280px;
+  --altura-menu: 72px;
+  --radio: 8px;
+  --sombra-suave: 0 2px 12px rgba(58, 40, 30, 0.08);
+}
+

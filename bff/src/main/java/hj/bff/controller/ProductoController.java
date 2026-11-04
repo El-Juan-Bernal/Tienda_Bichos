@@ -4,6 +4,8 @@ import hj.bff.dto.ProductoResponse;
 import hj.bff.service.ProductoService;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientResponseException;
 
 @RestController
 @RequestMapping("/api/productos")
@@ -25,6 +28,12 @@ public class ProductoController {
   @GetMapping
   public List<ProductoResponse> listar() {
     return productoService.obtenerTodos();
+  }
+
+  // Público (sin token): lo usa la página de inicio
+  @GetMapping("/destacados")
+  public List<ProductoResponse> destacados() {
+    return productoService.obtenerDestacados();
   }
 
   @GetMapping("/{id}")
@@ -51,6 +60,21 @@ public class ProductoController {
   public void cambiarEstado(@PathVariable Long id, @RequestBody Map<String, Boolean> body) {
     Boolean activo = body.getOrDefault("activo", false);
     productoService.cambiarEstado(id, activo);
+  }
+
+  // Solo Admin (lo cubre la regla /api/productos/** de SecurityConfig).
+  // Reenvía al front el 409 de ms-catalogo con su mensaje.
+  @PutMapping("/{id}/destacado")
+  public ResponseEntity<Object> cambiarDestacado(
+      @PathVariable Long id, @RequestBody Map<String, Boolean> body) {
+    try {
+      Boolean destacado = Boolean.TRUE.equals(body.get("destacado"));
+      return ResponseEntity.ok(productoService.cambiarDestacado(id, destacado));
+    } catch (RestClientResponseException e) {
+      return ResponseEntity.status(e.getStatusCode())
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(e.getResponseBodyAsString());
+    }
   }
 }
 

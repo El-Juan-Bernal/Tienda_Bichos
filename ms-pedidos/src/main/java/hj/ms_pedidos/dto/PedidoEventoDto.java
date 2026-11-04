@@ -12,6 +12,8 @@ public record PedidoEventoDto(
         List<ItemEventoDto> items,
         Integer subtotalNeto,
         Integer iva,
-        Integer total
+        Integer total,
+        String pasarelaSeleccionada,
+        Double montoReembolsado
 ) {}
 

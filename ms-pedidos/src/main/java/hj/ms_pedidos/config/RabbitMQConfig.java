@@ -18,11 +18,16 @@ public class RabbitMQConfig {
     public static final String QUEUE_EMAIL = "q.cmd.email";
     public static final String QUEUE_BODEGA = "q.cmd.bodega";
     public static final String QUEUE_INVOICE = "q.cmd.invoice";
+    public static final String QUEUE_STOCK = "q.cmd.stock";
 
     // Colas DLQ
     public static final String QUEUE_EMAIL_DLQ = "q.cmd.email.dlq";
     public static final String QUEUE_BODEGA_DLQ = "q.cmd.bodega.dlq";
     public static final String QUEUE_INVOICE_DLQ = "q.cmd.invoice.dlq";
+    public static final String QUEUE_STOCK_DLQ = "q.cmd.stock.dlq";
+
+    // Routing keys
+    public static final String ROUTING_KEY_STOCK = "stock.update";
 
     // Constantes para argumentos de RabbitMQ
     public static final String X_DEAD_LETTER_EXCHANGE = "x-dead-letter-exchange";
@@ -69,15 +74,26 @@ public class RabbitMQConfig {
                 .build();
     }
 
+    @Bean
+    public Queue stockQueue() {
+        return QueueBuilder.durable(QUEUE_STOCK)
+                .withArgument(X_DEAD_LETTER_EXCHANGE, EXCHANGE_DLX)
+                .withArgument(X_DEAD_LETTER_ROUTING_KEY, QUEUE_STOCK_DLQ)
+                .build();
+    }
+
     // --- COLAS DLQ ---
     @Bean
     public Queue emailDlq() { return QueueBuilder.durable(QUEUE_EMAIL_DLQ).build(); }
-    
+
     @Bean
     public Queue bodegaDlq() { return QueueBuilder.durable(QUEUE_BODEGA_DLQ).build(); }
-    
+
     @Bean
     public Queue invoiceDlq() { return QueueBuilder.durable(QUEUE_INVOICE_DLQ).build(); }
+
+    @Bean
+    public Queue stockDlq() { return QueueBuilder.durable(QUEUE_STOCK_DLQ).build(); }
 
     // --- BINDINGS: EXCHANGE DIRECT ---
     @Bean
@@ -93,6 +109,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingInvoiceDirect() {
         return BindingBuilder.bind(invoiceQueue()).to(directExchange()).with("invoice.gen");
+    }
+
+    @Bean
+    public Binding bindingStockDirect() {
+        return BindingBuilder.bind(stockQueue()).to(directExchange()).with(ROUTING_KEY_STOCK);
     }
 
     // --- BINDINGS: EXCHANGE TOPIC ---
@@ -125,6 +146,11 @@ public class RabbitMQConfig {
     @Bean
     public Binding bindingInvoiceDlq() {
         return BindingBuilder.bind(invoiceDlq()).to(deadLetterExchange()).with(QUEUE_INVOICE_DLQ);
+    }
+
+    @Bean
+    public Binding bindingStockDlq() {
+        return BindingBuilder.bind(stockDlq()).to(deadLetterExchange()).with(QUEUE_STOCK_DLQ);
     }
 
     @Bean

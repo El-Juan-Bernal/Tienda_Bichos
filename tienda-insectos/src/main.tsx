@@ -1,9 +1,18 @@
 import { createRoot } from 'react-dom/client';
 import { PublicClientApplication } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
-import { msalConfig } from './authConfig';
+import { msalConfig } from './config/authConfig';
 import App from './App';
-import './index.css';
+import './styles/variables.css';
+import './styles/base.css';
+import './styles/layout.css';
+import './styles/inicio.css';
+import './styles/catalogo.css';
+import './styles/modal.css';
+import './styles/carrito.css';
+import './styles/pedidos.css';
+import './styles/admin.css';
+import './styles/toast.css';
 
 const msal = new PublicClientApplication(msalConfig);
 
@@ -17,3 +26,4 @@ createRoot(rootElement).render(
     <App />
   </MsalProvider>,
 );
+

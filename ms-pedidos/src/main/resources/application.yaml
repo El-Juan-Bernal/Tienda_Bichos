@@ -20,7 +20,7 @@ spring:
       ddl-auto: update
     show-sql: true
 
-  # RabbitMQ principal (pedidos, correos, bodega)
+  # RabbitMQ principal (pedidos, correos, bodega, stock)
   rabbitmq:
     host: ${RABBIT_HOST:localhost}
     port: ${RABBIT_PORT:5672}
@@ -30,4 +30,11 @@ spring:
 microservices:
   catalogo:
     base-url: ${URL_CATALOGO:http://localhost:8082}
+
+# Tiempos del avance automático de estados (segundos)
+pedidos:
+  avance:
+    espera-preparacion-segundos: ${AVANCE_PREPARACION_SEG:60}
+    espera-despacho-segundos: ${AVANCE_DESPACHO_SEG:60}
+    espera-entrega-segundos: ${AVANCE_ENTREGA_SEG:10}
 

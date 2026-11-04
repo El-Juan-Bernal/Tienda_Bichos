@@ -24,11 +24,16 @@ public class Pedido {
     private String usuarioEmail;
     private String pasarelaSeleccionada;
     private Double montoTotal;
-    
+
     @Enumerated(EnumType.STRING)
     private EstadoPedido estado;
 
     private LocalDateTime fechaCreacion;
+
+    // Cancelación y reembolso (simulado)
+    private LocalDateTime fechaCancelacion;
+    private Double montoReembolsado;
+    private LocalDateTime fechaReembolso;
 
     @ElementCollection
     @CollectionTable(name = "pedido_items", joinColumns = @JoinColumn(name = "pedido_id"))

@@ -9,7 +9,8 @@ public record ProductoResponse(
     Integer porcentajeDescuento,
     String imagenUrl,
     String categoria,
-    Boolean activo
+    Boolean activo,
+    Boolean destacado
 ) {
 }
 

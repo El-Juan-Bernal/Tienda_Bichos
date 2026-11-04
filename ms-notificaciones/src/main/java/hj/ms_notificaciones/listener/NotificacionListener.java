@@ -18,9 +18,11 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import java.io.ByteArrayOutputStream;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 @Slf4j
@@ -44,6 +46,8 @@ public class NotificacionListener {
     private static final String CAMPO_SUBTOTAL_NETO = "subtotalNeto";
     private static final String CAMPO_IVA = "iva";
     private static final String CAMPO_TOTAL = "total";
+    private static final String CAMPO_MONTO_REEMBOLSADO = "montoReembolsado";
+    private static final String CAMPO_PASARELA = "pasarelaSeleccionada";
 
     @RabbitListener(queues = "q.cmd.email")
     public void procesarCorreo(String mensaje) {
@@ -61,13 +65,13 @@ public class NotificacionListener {
                 return;
             }
 
-            String textoPersonalizado = obtenerMensajePorEstado(estado);
+            String textoPersonalizado = obtenerMensajePorEstado(estado, json);
 
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
             helper.setTo(destinatario);
-            helper.setSubject("Actualización de Pedido #" + pedidoId + " - Tienda de insectos H&J");
+            helper.setSubject(construirAsunto(estado, pedidoId));
             helper.setText("Hola,\n\n" + textoPersonalizado + "\n\nSaludos cordiales,\nEl equipo de Tienda de insectos H&J");
             
             // Adjuntar boleta PDF solo si fue ACEPTADO (Lógica extraída a método privado)
@@ -82,6 +86,13 @@ public class NotificacionListener {
             log.error("❌ Error enviando el correo: {}", e.getMessage());
             throw new org.springframework.amqp.AmqpRejectAndDontRequeueException("Fallo al enviar correo", e); 
         }
+    }
+
+    private String construirAsunto(String estado, String pedidoId) {
+        if ("CANCELADO".equals(estado)) {
+            return "Cancelación confirmada - Pedido #" + pedidoId + " - Tienda de insectos H&J";
+        }
+        return "Actualización de Pedido #" + pedidoId + " - Tienda de insectos H&J";
     }
 
     private void adjuntarBoletaPdf(String pedidoId, String destinatario, JsonNode json, MimeMessageHelper helper) throws Exception {
@@ -146,15 +157,48 @@ public class NotificacionListener {
     }
 
     // Opciones de respuestas según el estado
-    private String obtenerMensajePorEstado(String estado) {
+    private String obtenerMensajePorEstado(String estado, JsonNode json) {
         return switch (estado) {
             case "ACEPTADO" -> "Su compra ha sido realizado con éxito, en breve será preparada para su despacho. Adjunto en este correo encontrará su boleta. Muchas gracias por su compra.";
             case "EN_PREPARACION" -> "Su pedido está siendo preparado en bodega para su despacho, le avisaremos cuando salga a reparto.";
             case "DESPACHADO" -> "Su pedido acaba de salir de bodega y ya se encuentra en reparto.";
             case "ENTREGADO" -> "Su pedido ha sido entregado exitosamente, esperamos que pueda disfrutar de su nueva mascota. Muchas gracias por elegirnos.\n\nTienda de insectos H&J.\nProyecto DuocUC";
-            case "CANCELADO" -> "Su pedido ha sido cancelado.";
+            case "CANCELADO" -> mensajeCancelacion(json);
             default -> "El estado de su pedido ha sido actualizado a: " + estado + ".";
         };
+    }
+
+    // Correo único de cancelación: confirma que el cliente canceló y que su dinero fue devuelto
+    private String mensajeCancelacion(JsonNode json) {
+        String pedidoId = json.get("pedidoId").asText();
+        StringBuilder sb = new StringBuilder();
+        sb.append("La cancelación de su pedido #").append(pedidoId)
+          .append(" ha sido realizada con éxito. A continuación se detallan los productos cancelados y el monto reembolsado.");
+
+        JsonNode itemsNode = json.get("items");
+        if (itemsNode != null && itemsNode.isArray() && itemsNode.size() > 0) {
+            sb.append("\n\nProductos cancelados:");
+            for (JsonNode item : itemsNode) {
+                String nombre = item.hasNonNull(CAMPO_NOMBRE_PRODUCTO)
+                        ? item.get(CAMPO_NOMBRE_PRODUCTO).asText() : "Producto";
+                int cantidad = item.hasNonNull(CAMPO_CANTIDAD) ? item.get(CAMPO_CANTIDAD).asInt() : 0;
+                sb.append("\n ").append(cantidad).append(" x ").append(nombre);
+            }
+        }
+
+        sb.append("\n\nSu dinero fue devuelto");
+        if (json.hasNonNull(CAMPO_MONTO_REEMBOLSADO)) {
+            sb.append(": ").append(formatearPesos(json.get(CAMPO_MONTO_REEMBOLSADO).asDouble()));
+            if (json.hasNonNull(CAMPO_PASARELA)) {
+                sb.append(" a través de ").append(json.get(CAMPO_PASARELA).asText());
+            }
+        }
+        sb.append(".\n\nEsperamos verle pronto de vuelta en nuestra tienda.");
+        return sb.toString();
+    }
+
+    private String formatearPesos(double monto) {
+        return "$" + NumberFormat.getInstance(Locale.of("es", "CL")).format(Math.round(monto));
     }
 }
 
