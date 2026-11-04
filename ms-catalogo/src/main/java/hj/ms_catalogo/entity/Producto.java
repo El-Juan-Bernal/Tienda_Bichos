@@ -28,6 +28,9 @@ public class Producto {
     @Column(columnDefinition = "boolean default false")
     private Boolean reabastecimientoEnProceso = false;
 
+    @Column(columnDefinition = "boolean default false")
+    private Boolean destacado = false;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getNombre() { return nombre; }
@@ -48,5 +51,7 @@ public class Producto {
     public void setActivo(Boolean activo) { this.activo = activo; }
     public Boolean getReabastecimientoEnProceso() { return reabastecimientoEnProceso; }
     public void setReabastecimientoEnProceso(Boolean reabastecimientoEnProceso) { this.reabastecimientoEnProceso = reabastecimientoEnProceso; }
+    public Boolean getDestacado() { return destacado; }
+    public void setDestacado(Boolean destacado) { this.destacado = destacado; }
 }
 

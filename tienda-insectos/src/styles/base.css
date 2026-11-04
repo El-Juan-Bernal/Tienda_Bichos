@@ -1,0 +1,135 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--fuente);
+  color: var(--texto);
+  background: var(--blanco);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 500;
+  color: var(--texto);
+}
+
+p {
+  margin: 0;
+}
+
+.pagina {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.contenido {
+  flex: 1;
+  width: 100%;
+}
+
+.contenedor {
+  width: 100%;
+  max-width: var(--ancho-max);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+@media (max-width: 640px) {
+  .contenedor {
+    padding: 0 18px;
+  }
+}
+
+/* Etiqueta pequeña en mayúsculas ("TIENDA ONLINE") */
+.etiqueta {
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--texto-suave);
+}
+
+/* Botones reutilizables */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border: 1px solid transparent;
+  border-radius: var(--radio);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primario {
+  background: var(--verde);
+  color: #ffffff;
+}
+
+.btn-primario:hover:not(:disabled) {
+  background: var(--verde-oscuro);
+}
+
+.btn-borde {
+  background: transparent;
+  color: var(--texto);
+  border-color: var(--borde);
+}
+
+.btn-borde:hover:not(:disabled) {
+  border-color: var(--verde);
+  color: var(--verde);
+}
+
+/* Cartel temporal */
+.en-construccion {
+  padding: 96px 0;
+  text-align: center;
+}
+
+.en-construccion h1 {
+  font-size: 40px;
+  margin: 12px 0;
+}
+
+.en-construccion p:last-child {
+  color: var(--texto-suave);
+}
+

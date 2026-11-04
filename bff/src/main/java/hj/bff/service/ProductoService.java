@@ -37,5 +37,13 @@ public class ProductoService {
   public void cambiarEstado(Long id, Boolean activo) {
     productoRepository.cambiarEstado(id, activo);
   }
+
+    public List<ProductoResponse> obtenerDestacados() {
+    return productoRepository.listarDestacados();
+  }
+
+  public ProductoResponse cambiarDestacado(Long id, Boolean destacado) {
+    return productoRepository.cambiarDestacado(id, destacado);
+  }
 }
 

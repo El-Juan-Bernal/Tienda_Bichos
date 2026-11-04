@@ -4,9 +4,15 @@ import hj.ms_catalogo.config.RabbitMQConfig;
 import hj.ms_catalogo.dto.OrdenCompraDto;
 import hj.ms_catalogo.dto.ProductoRequest;
 import hj.ms_catalogo.dto.ProductoResponse;
+import hj.ms_catalogo.dto.StockEventoDto;
+import hj.ms_catalogo.entity.MovimientoStock;
 import hj.ms_catalogo.entity.Producto;
+import hj.ms_catalogo.exception.DestacadoNoPermitidoException;
+import hj.ms_catalogo.repository.MovimientoStockRepository;
 import hj.ms_catalogo.repository.ProductoRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -22,16 +28,33 @@ public class ProductoService {
     // Si el stock queda en este valor o menos, se dispara la orden de compra
     private static final int UMBRAL_STOCK_BAJO = 5;
 
+    // NUEVO: máximo de productos destacados en la página de inicio
+    private static final int MAXIMO_DESTACADOS = 8;
+
+    private static final String TIPO_REPOSICION = "REPOSICION_CANCELACION";
+
     private final ProductoRepository productoRepository;
+    private final MovimientoStockRepository movimientoStockRepository;
     private final RabbitTemplate rabbitTemplate;
 
-    public ProductoService(ProductoRepository productoRepository, RabbitTemplate rabbitTemplate) {
+    public ProductoService(ProductoRepository productoRepository,
+                           MovimientoStockRepository movimientoStockRepository,
+                           RabbitTemplate rabbitTemplate) {
         this.productoRepository = productoRepository;
+        this.movimientoStockRepository = movimientoStockRepository;
         this.rabbitTemplate = rabbitTemplate;
     }
 
     public List<ProductoResponse> obtenerTodos() {
         return productoRepository.findAll().stream()
+                .map(this::mapearAResponse)
+                .toList();
+    }
+
+    // NUEVO
+    public List<ProductoResponse> obtenerDestacados() {
+        return productoRepository.findDestacadosActivos().stream()
+                .limit(MAXIMO_DESTACADOS)
                 .map(this::mapearAResponse)
                 .toList();
     }
@@ -42,6 +65,7 @@ public class ProductoService {
                 .orElse(null);
     }
 
+    // CAMBIO: se agrega el campo destacado
     private ProductoResponse mapearAResponse(Producto p) {
         return new ProductoResponse(
             p.getId(),
@@ -52,7 +76,8 @@ public class ProductoService {
             p.getImagenUrl(),
             p.getCategoria(),
             p.getPorcentajeDescuento() != null ? p.getPorcentajeDescuento() : 0,
-            p.getActivo() == null || p.getActivo()
+            p.getActivo() == null || p.getActivo(),
+            Boolean.TRUE.equals(p.getDestacado())
         );
     }
 
@@ -72,7 +97,7 @@ public class ProductoService {
             producto.setPorcentajeDescuento(datosNuevos.porcentajeDescuento());
         }
         if (datosNuevos.activo() != null) {
-            producto.setActivo(datosNuevos.activo());
+            aplicarActivo(producto, datosNuevos.activo()); // CAMBIO
         }
 
         // Si se repuso el stock por sobre el umbral, la orden de compra ya se cumplió:
@@ -93,10 +118,46 @@ public class ProductoService {
     public void cambiarEstado(Long id, Boolean activo) {
         Producto producto = productoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException(MSG_NO_ENCONTRADO + id));
-        producto.setActivo(activo);
+        aplicarActivo(producto, activo); // CAMBIO
         productoRepository.save(producto);
     }
 
+    // NUEVO: un producto deshabilitado deja de ser destacado
+    private void aplicarActivo(Producto producto, boolean activo) {
+        producto.setActivo(activo);
+        if (!activo && Boolean.TRUE.equals(producto.getDestacado())) {
+            producto.setDestacado(false);
+            log.info("Producto deshabilitado: se le quitó la estrella de destacado ({})", producto.getNombre());
+        }
+    }
+
+    // NUEVO: enciende o apaga la estrella, con tope de MAXIMO_DESTACADOS
+    @Transactional
+    public ProductoResponse cambiarDestacado(Long id, boolean destacado) {
+        Producto producto = productoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(MSG_NO_ENCONTRADO + id));
+
+        boolean yaDestacado = Boolean.TRUE.equals(producto.getDestacado());
+        if (destacado && !yaDestacado) {
+            if (Boolean.FALSE.equals(producto.getActivo())) {
+                throw new DestacadoNoPermitidoException(
+                        "No se puede destacar un producto deshabilitado. Habilítalo primero.");
+            }
+            if (productoRepository.contarDestacadosActivos() >= MAXIMO_DESTACADOS) {
+                throw new DestacadoNoPermitidoException(
+                        "Ya tienes " + MAXIMO_DESTACADOS
+                                + " productos destacados. Quita una estrella para destacar otro.");
+            }
+        }
+
+        producto.setDestacado(destacado);
+        return mapearAResponse(productoRepository.save(producto));
+    }
+
+    /**
+     * Descuenta stock al aceptar un pedido. Ya NO dispara el reabastecimiento:
+     * eso ocurre cuando el pedido sale de bodega (evento PEDIDO_DESPACHADO).
+     */
     @Transactional
     public void descontarStock(Long id, Integer cantidad) {
         Producto producto = productoRepository.findById(id)
@@ -107,26 +168,93 @@ public class ProductoService {
         }
 
         producto.setStock(producto.getStock() - cantidad);
+        productoRepository.save(producto);
+    }
 
-        // Validación de inventario B2B para reabastecimiento
-        if (producto.getStock() <= UMBRAL_STOCK_BAJO && !Boolean.TRUE.equals(producto.getReabastecimientoEnProceso())) {
+    /**
+     * Devuelve al stock las unidades de un pedido cancelado. Idempotente: si el mismo pedido
+     * ya repuso un producto, no lo repone otra vez. No modifica la bandera de reabastecimiento.
+     */
+    @Transactional
+    public void reponerStockPorCancelacion(Long pedidoId, List<StockEventoDto.ItemStock> items) {
+        for (Map.Entry<Long, Integer> entrada : agruparPorProducto(items).entrySet()) {
+            Long productoId = entrada.getKey();
+            Integer cantidad = entrada.getValue();
 
-            // Bloqueo inmediato para evitar cruces
-            producto.setReabastecimientoEnProceso(true);
+            if (movimientoStockRepository.existsByTipoAndPedidoIdAndProductoId(TIPO_REPOSICION, pedidoId, productoId)) {
+                log.info("Reposición ya aplicada para pedido #{} y producto {}. Se ignora el mensaje repetido.",
+                        pedidoId, productoId);
+                continue;
+            }
 
-            OrdenCompraDto orden = new OrdenCompraDto();
-            orden.setProductoId(producto.getId());
-            orden.setProductoNombre(producto.getNombre());
-            orden.setCategoria(producto.getCategoria());
-            orden.setCantidadRequerida(50);
+            Producto producto = productoRepository.findById(productoId).orElse(null);
+            if (producto == null) {
+                log.warn("Reposición omitida: no existe el producto {} (pedido #{})", productoId, pedidoId);
+                continue;
+            }
 
-            // Envío del evento al broker secundario
-            rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_PROVEEDORES, "orden.generar", orden);
+            int stockActual = producto.getStock() != null ? producto.getStock() : 0;
+            producto.setStock(stockActual + cantidad);
+            productoRepository.save(producto);
+            movimientoStockRepository.save(new MovimientoStock(TIPO_REPOSICION, pedidoId, productoId, cantidad));
 
-            log.info("Alerta de stock bajo disparada ({} unidades). Generando orden B2B para: {}", producto.getStock(), producto.getNombre());
+            log.info("Stock repuesto por cancelación del pedido #{}: +{} unidades de {} (stock ahora {})",
+                    pedidoId, cantidad, producto.getNombre(), producto.getStock());
+        }
+    }
+
+    /**
+     * Cuando el pedido sale de bodega, se evalúa cada producto: si quedó con poco stock
+     * y no hay un reabastecimiento en curso, se solicita la orden de compra al proveedor.
+     */
+    @Transactional
+    public void evaluarReabastecimientoPorDespacho(Long pedidoId, List<StockEventoDto.ItemStock> items) {
+        for (Long productoId : agruparPorProducto(items).keySet()) {
+            Producto producto = productoRepository.findById(productoId).orElse(null);
+            if (producto == null) {
+                log.warn("Evaluación omitida: no existe el producto {} (pedido #{})", productoId, pedidoId);
+                continue;
+            }
+            if (solicitarReabastecimientoSiCorresponde(producto)) {
+                productoRepository.save(producto);
+            }
+        }
+    }
+
+    private boolean solicitarReabastecimientoSiCorresponde(Producto producto) {
+        if (producto.getStock() == null
+                || producto.getStock() > UMBRAL_STOCK_BAJO
+                || Boolean.TRUE.equals(producto.getReabastecimientoEnProceso())) {
+            return false;
         }
 
-        productoRepository.save(producto);
+        // Bloqueo inmediato para evitar órdenes duplicadas
+        producto.setReabastecimientoEnProceso(true);
+
+        OrdenCompraDto orden = new OrdenCompraDto();
+        orden.setProductoId(producto.getId());
+        orden.setProductoNombre(producto.getNombre());
+        orden.setCategoria(producto.getCategoria());
+        orden.setCantidadRequerida(50);
+
+        // Envío del evento al broker de proveedores
+        rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_PROVEEDORES, "orden.generar", orden);
+
+        log.info("Alerta de stock bajo disparada ({} unidades). Generando orden B2B para: {}",
+                producto.getStock(), producto.getNombre());
+        return true;
+    }
+
+    private Map<Long, Integer> agruparPorProducto(List<StockEventoDto.ItemStock> items) {
+        Map<Long, Integer> agrupado = new LinkedHashMap<>();
+        if (items != null) {
+            for (StockEventoDto.ItemStock item : items) {
+                if (item.productoId() != null && item.cantidad() != null) {
+                    agrupado.merge(item.productoId(), item.cantidad(), Integer::sum);
+                }
+            }
+        }
+        return agrupado;
     }
 
     @Transactional
@@ -138,6 +266,8 @@ public class ProductoService {
             if (p.getActivo() == null) {
                 p.setActivo(true);
             }
+            // CAMBIO: la estrella nunca se asigna al crear, así no se salta el tope
+            p.setDestacado(false);
         });
         List<Producto> productosGuardados = productoRepository.saveAll(productos);
         return productosGuardados.stream()

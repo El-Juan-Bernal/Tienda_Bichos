@@ -4,6 +4,8 @@ import hj.ms_pedidos.dto.ActualizarEstadoRequest;
 import hj.ms_pedidos.dto.CrearPedidoRequest;
 import hj.ms_pedidos.entity.EstadoPedido;
 import hj.ms_pedidos.entity.Pedido;
+import hj.ms_pedidos.entity.PedidoHistorial;
+import hj.ms_pedidos.service.AvanceAutomaticoPedidos;
 import hj.ms_pedidos.service.PedidoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,8 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/api/pedidos")
@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class PedidoController {
 
     private final PedidoService pedidoService;
+    private final AvanceAutomaticoPedidos avanceAutomatico;
 
     @PostMapping
     public ResponseEntity<Pedido> crear(@RequestBody CrearPedidoRequest request) {
@@ -35,6 +36,11 @@ public class PedidoController {
         return ResponseEntity.ok(pedidoService.listarTodos());
     }
 
+    @GetMapping("/{id}/historial")
+    public ResponseEntity<List<PedidoHistorial>> historial(@PathVariable Long id) {
+        return ResponseEntity.ok(pedidoService.listarHistorial(id));
+    }
+
     @PatchMapping("/{id}/estado")
     public ResponseEntity<Object> actualizarEstado(
             @PathVariable Long id,
@@ -42,43 +48,26 @@ public class PedidoController {
         try {
             Pedido actualizado = pedidoService.actualizarEstado(id, request.nuevoEstado());
 
-            // Si el pedido acaba de ser ACEPTADO, iniciamos la simulación automática cada 5 segundos
+            // Al ACEPTAR el pedido se inicia la simulación automática de avance
             if (request.nuevoEstado() == EstadoPedido.ACEPTADO) {
-                iniciarAvanceAutomatico(id);
+                avanceAutomatico.iniciar(id);
             }
-
             return ResponseEntity.ok(actualizado);
         } catch (IllegalStateException | IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    private void iniciarAvanceAutomatico(Long pedidoId) {
-        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PedidoController.class);
-        CompletableFuture.runAsync(() -> {
-            EstadoPedido[] siguientesEstados = {
-                EstadoPedido.EN_PREPARACION,
-                EstadoPedido.DESPACHADO,
-                EstadoPedido.ENTREGADO
-            };
-
-            boolean continuar = true;
-            for (EstadoPedido siguiente : siguientesEstados) {
-                if (!continuar) {
-                    break;
-                }
-                try {
-                    TimeUnit.SECONDS.sleep(5);
-                    pedidoService.actualizarEstado(pedidoId, siguiente);
-                } catch (InterruptedException _) {
-                    Thread.currentThread().interrupt();
-                    continuar = false;
-                } catch (Exception e) {
-                    log.error("Deteniendo avance automático para pedido #{}: {}", pedidoId, e.getMessage());
-                    continuar = false;
-                }
-            }
-        });
+    /** 'usuario' es opcional aquí; el BFF lo enviará con el correo del token para validar al dueño. */
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<Object> cancelar(
+            @PathVariable Long id,
+            @RequestParam(required = false) String usuario) {
+        try {
+            return ResponseEntity.ok(pedidoService.cancelarPedido(id, usuario));
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 }
 
