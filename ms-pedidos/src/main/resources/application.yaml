@@ -57,6 +57,6 @@ kafka:
 
 logging:
   level:
-    org.apache.kafka.clients.NetworkClient: ERROR
+    "[org.apache.kafka.clients.NetworkClient]": ERROR
 
 

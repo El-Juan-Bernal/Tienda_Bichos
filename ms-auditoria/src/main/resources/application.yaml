@@ -1,3 +1,45 @@
+server:
+  port: ${SERVER_PORT:8089}
+
 spring:
   application:
     name: ms-auditoria
+
+  # Lee el .env cuando corres con mvnw en tu PC (en Docker/AWS no hace falta)
+  config:
+    import: optional:file:.env[.properties]
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/tienda_bichos_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    consumer:
+      group-id: ms-auditoria
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
+    listener:
+      ack-mode: record
+
+kafka:
+  topic:
+    orders-events: ${KAFKA_TOPIC_ORDERS:orders.events}
+    audit-timeline: ${KAFKA_TOPIC_AUDIT:audit.timeline}
+    dlt: ${KAFKA_TOPIC_DLT:orders.events.audit.DLT}
+
