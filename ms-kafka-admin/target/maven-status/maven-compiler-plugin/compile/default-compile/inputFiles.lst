@@ -1,8 +1,0 @@
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\config\KafkaAdminConfig.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\controller\KafkaAdminController.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\dto\ClusterResponse.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\dto\ParticionInfo.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\dto\TopicoRequest.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\dto\TopicoResponse.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\MsKafkaAdminApplication.java
-C:\Fullstack_4\Tienda_Bichos\ms-kafka-admin\src\main\java\hj\ms_kafka_admin\service\KafkaAdminService.java
