@@ -27,6 +27,19 @@ spring:
     username: ${RABBIT_USER:guest}
     password: ${RABBIT_PASS:guest}
 
+  # Kafka: eventos de negocio (analítica y auditoría)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
+        "[max.block.ms]": 3000
+        "[request.timeout.ms]": 5000
+        "[delivery.timeout.ms]": 10000
+
 microservices:
   catalogo:
     base-url: ${URL_CATALOGO:http://localhost:8082}
@@ -37,4 +50,13 @@ pedidos:
     espera-preparacion-segundos: ${AVANCE_PREPARACION_SEG:60}
     espera-despacho-segundos: ${AVANCE_DESPACHO_SEG:60}
     espera-entrega-segundos: ${AVANCE_ENTREGA_SEG:10}
+
+kafka:
+  topic:
+    orders-events: ${KAFKA_TOPIC_ORDERS:orders.events}
+
+logging:
+  level:
+    "[org.apache.kafka.clients.NetworkClient]": ERROR
+
 
