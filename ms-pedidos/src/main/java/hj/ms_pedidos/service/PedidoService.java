@@ -5,6 +5,7 @@ import hj.ms_pedidos.dto.CrearPedidoRequest;
 import hj.ms_pedidos.dto.ItemEventoDto;
 import hj.ms_pedidos.dto.ItemPedidoDto;
 import hj.ms_pedidos.dto.PedidoEventoDto;
+import hj.ms_pedidos.dto.PedidoEventoKafka;
 import hj.ms_pedidos.dto.StockEventoDto;
 import hj.ms_pedidos.entity.EstadoPedido;
 import hj.ms_pedidos.entity.Pedido;
@@ -46,16 +47,19 @@ public class PedidoService {
     private final PedidoRepository pedidoRepository;
     private final PedidoHistorialRepository historialRepository;
     private final RabbitTemplate rabbitTemplate;
+    private final PedidoEventosKafka eventosKafka; // KAFKA
     private final RestClient restClient;
 
     public PedidoService(
             PedidoRepository pedidoRepository,
             PedidoHistorialRepository historialRepository,
             RabbitTemplate rabbitTemplate,
+            PedidoEventosKafka eventosKafka, // KAFKA
             @Value("${microservices.catalogo.base-url}") String catalogoBaseUrl) {
         this.pedidoRepository = pedidoRepository;
         this.historialRepository = historialRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.eventosKafka = eventosKafka; // KAFKA
         this.restClient = RestClient.builder().baseUrl(catalogoBaseUrl).build();
     }
 
@@ -80,7 +84,7 @@ public class PedidoService {
 
         Pedido guardado = pedidoRepository.save(pedido);
         historialRepository.save(new PedidoHistorial(guardado.getId(), null, EstadoPedido.CREADO, ORIGEN_CLIENTE));
-        publicarEvento(guardado);
+        publicarEvento(guardado, null, ORIGEN_CLIENTE); // KAFKA
         return guardado;
     }
 
@@ -157,7 +161,7 @@ public class PedidoService {
         historialRepository.save(new PedidoHistorial(
                 guardado.getId(), actual, EstadoPedido.CANCELADO, ORIGEN_CLIENTE));
 
-        publicarEvento(guardado);
+        publicarEvento(guardado, actual, ORIGEN_CLIENTE); // KAFKA
         publicarStock(STOCK_REPOSICION, guardado);
         log.info("Pedido #{} cancelado. Reembolso simulado de {} por {}",
                 guardado.getId(), guardado.getMontoReembolsado(), guardado.getPasarelaSeleccionada());
@@ -188,7 +192,7 @@ public class PedidoService {
         pedido.setEstado(nuevo);
         Pedido guardado = pedidoRepository.save(pedido);
         historialRepository.save(new PedidoHistorial(guardado.getId(), anterior, nuevo, origen));
-        publicarEvento(guardado);
+        publicarEvento(guardado, anterior, origen); // KAFKA
 
         // Al salir de bodega, ms-catalogo evalúa si corresponde pedir reabastecimiento
         if (nuevo == EstadoPedido.DESPACHADO) {
@@ -235,7 +239,8 @@ public class PedidoService {
                 new StockEventoDto(tipo, pedido.getId(), items));
     }
 
-    private void publicarEvento(Pedido pedido) {
+    // KAFKA: ahora recibe el estado anterior y el origen del cambio
+    private void publicarEvento(Pedido pedido, EstadoPedido anterior, String origen) {
         List<ItemEventoDto> itemsEvento = new ArrayList<>();
         int subtotalNetoTotal = 0;
 
@@ -293,6 +298,9 @@ public class PedidoService {
         if (pedido.getEstado() != EstadoPedido.CANCELADO) {
             rabbitTemplate.convertAndSend(RabbitMQConfig.EXCHANGE_DIRECT, ROUTING_KEY_INVOICE, evento);
         }
+
+        // 5. KAFKA: evento de negocio para analítica y auditoría
+        eventosKafka.publicar(PedidoEventoKafka.de(pedido, anterior, origen, itemsEvento));
     }
 }
 
