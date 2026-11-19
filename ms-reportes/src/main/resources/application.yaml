@@ -1,3 +1,26 @@
+server:
+  port: ${SERVER_PORT:8088}
+
 spring:
   application:
     name: ms-reportes
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+    streams:
+      application-id: ms-reportes-v3
+      replication-factor: 3
+      state-dir: ${STATE_DIR:./estado-streams}
+      properties:
+        "[default.key.serde]": org.apache.kafka.common.serialization.Serdes$StringSerde
+        "[default.value.serde]": org.apache.kafka.common.serialization.Serdes$StringSerde
+        "[num.stream.threads]": 1
+        "[commit.interval.ms]": 1000
+        # Sin caché: cada evento actualiza el KPI de inmediato.
+        "[statestore.cache.max.bytes]": 0
+
+kafka:
+  topic:
+    orders-events: ${KAFKA_TOPIC_ORDERS:orders.events}
+    dlt: ${KAFKA_TOPIC_DLT:orders.events.report.DLT}
+
