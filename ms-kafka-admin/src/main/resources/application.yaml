@@ -9,4 +9,26 @@ server:
 
 kafka-admin:
   crear-topicos-al-iniciar: ${CREAR_TOPICOS:true}
+  # Tópicos que se crean al iniciar si faltan. La retención se escribe en DÍAS.
+  topicos-base:
+    - nombre: orders.events
+      particiones: 3
+      replicas: 3
+      politica: delete
+      retencion-dias: 7
+    - nombre: audit.timeline
+      particiones: 3
+      replicas: 3
+      politica: compact,delete
+      retencion-dias: 30
+    - nombre: orders.events.audit.DLT
+      particiones: 3
+      replicas: 3
+      politica: delete
+      retencion-dias: 14
+    - nombre: orders.events.report.DLT
+      particiones: 3
+      replicas: 3
+      politica: delete
+      retencion-dias: 14
 

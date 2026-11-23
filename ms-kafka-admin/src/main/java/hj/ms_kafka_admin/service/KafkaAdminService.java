@@ -1,9 +1,11 @@
 package hj.ms_kafka_admin.service;
 
+import hj.ms_kafka_admin.config.KafkaAdminProperties;
 import hj.ms_kafka_admin.dto.ClusterResponse;
 import hj.ms_kafka_admin.dto.ParticionInfo;
 import hj.ms_kafka_admin.dto.TopicoRequest;
 import hj.ms_kafka_admin.dto.TopicoResponse;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -38,26 +40,15 @@ import org.springframework.web.server.ResponseStatusException;
 public class KafkaAdminService {
 
     private static final int TIMEOUT_SEG = 15;
-    private static final long DIAS_MS = 86_400_000L;
     private static final String CLEANUP_POLICY = "cleanup.policy";
     private static final String RETENTION_MS = "retention.ms";
 
-    /** Tópicos del caso: 3 particiones y 3 réplicas cada uno. */
-        private static final List<TopicoRequest> TOPICOS_BASE = List.of(
-        new TopicoRequest("orders.events", 3, 3,
-            Map.of(CLEANUP_POLICY, "delete", RETENTION_MS, String.valueOf(7 * DIAS_MS))),
-        new TopicoRequest("audit.timeline", 3, 3,
-            Map.of(CLEANUP_POLICY, "compact,delete", RETENTION_MS, String.valueOf(30 * DIAS_MS))),
-        new TopicoRequest("orders.events.audit.DLT", 3, 3,
-            Map.of(CLEANUP_POLICY, "delete", RETENTION_MS, String.valueOf(14 * DIAS_MS))),
-        new TopicoRequest("orders.events.report.DLT", 3, 3,
-            Map.of(CLEANUP_POLICY, "delete", RETENTION_MS, String.valueOf(14 * DIAS_MS)))
-    );
-
     private final Admin admin;
+    private final KafkaAdminProperties propiedades;
 
-    public KafkaAdminService(Admin admin) {
+    public KafkaAdminService(Admin admin, KafkaAdminProperties propiedades) {
         this.admin = admin;
+        this.propiedades = propiedades;
     }
 
     public ClusterResponse cluster() {
@@ -85,13 +76,13 @@ public class KafkaAdminService {
         esperar(admin.createTopics(List.of(nuevo)).all());
     }
 
-    /** Crea solo los que faltan. Devuelve los nombres creados. */
+    /** Crea solo los que faltan (los definidos en application.yaml). Devuelve los nombres creados. */
     public List<String> crearTopicosBase() {
         Set<String> existentes = esperar(admin.listTopics().names());
         List<String> creados = new ArrayList<>();
-        for (TopicoRequest t : TOPICOS_BASE) {
+        for (KafkaAdminProperties.TopicoBase t : propiedades.topicosBase()) {
             if (!existentes.contains(t.nombre())) {
-                crear(t);
+                crear(aRequest(t));
                 creados.add(t.nombre());
             }
         }
@@ -112,6 +103,13 @@ public class KafkaAdminService {
 
     public void aumentarParticiones(String nombre, int total) {
         esperar(admin.createPartitions(Map.of(nombre, NewPartitions.increaseTo(total))).all());
+    }
+
+    /** Pasa un tópico del yaml (retención en días) a lo que entiende Kafka (retention.ms). */
+    private TopicoRequest aRequest(KafkaAdminProperties.TopicoBase t) {
+        String retencionMs = String.valueOf(Duration.ofDays(t.retencionDias()).toMillis());
+        return new TopicoRequest(t.nombre(), t.particiones(), t.replicas(),
+            Map.of(CLEANUP_POLICY, t.politica(), RETENTION_MS, retencionMs));
     }
 
     private TopicoResponse aRespuesta(TopicDescription d) {
@@ -144,7 +142,7 @@ public class KafkaAdminService {
     private <T> T esperar(KafkaFuture<T> futuro) {
         try {
             return futuro.get(TIMEOUT_SEG, TimeUnit.SECONDS);
-                } catch (InterruptedException _) {
+        } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Operación interrumpida.");
         } catch (TimeoutException _) {
