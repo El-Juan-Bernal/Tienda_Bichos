@@ -45,6 +45,9 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/pedidos").hasAuthority(SCOPE_USER)
             .requestMatchers(HttpMethod.GET, "/api/pedidos", "/api/pedidos/*/historial").hasAuthority(SCOPE_USER)
             .requestMatchers(HttpMethod.PATCH, "/api/pedidos/*/estado", "/api/pedidos/*/cancelar").hasAuthority(SCOPE_USER)
+            // Reportes y auditoría (solo lectura) y administración de Kafka: solo el rol Admin
+            .requestMatchers(HttpMethod.GET, "/api/report/**", "/api/audit/**").hasRole(ROL_ADMIN)
+            .requestMatchers("/api/kafka-admin/**").hasRole(ROL_ADMIN)
             .anyRequest().denyAll()
         )
         .oauth2ResourceServer(oauth ->

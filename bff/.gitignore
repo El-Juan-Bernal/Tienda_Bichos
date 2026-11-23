@@ -35,3 +35,4 @@ build/
 ### Variables de Entorno ###
 .env
 
+bff/entorno-local.ps1
