@@ -21,3 +21,4 @@ yarn-error.log*
 ### Variables de Entorno ###
 .env
 
+bff/entorno-local.ps1
