@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
 import type { MostrarToast, TipoToast, ToastData } from '../types/toast';
 
-/** Duración por defecto de cada notificación (7 segundos). */
-const DURACION_TOAST_MS = 7000;
+/** Duración por defecto de cada notificación (3 segundos). */
+const DURACION_TOAST_MS = 3000;
 const MAXIMO_TOASTS = 4;
 
 export function useToasts() {

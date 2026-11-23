@@ -15,11 +15,22 @@ interface Formulario {
 }
 
 export default function TabAgregar({ onGuardar, onAviso }: Readonly<Props>) {
-  const contador = useRef(1);
-  const nuevo = (): Formulario => ({ clave: contador.current++, datos: formVacio() });
+  // Última clave usada. Solo se lee dentro de los clics, nunca durante el render.
+  const ultimaClave = useRef(0);
 
-  const [formularios, setFormularios] = useState<Formulario[]>(() => [nuevo()]);
+  // El primer formulario tiene la clave 0; los siguientes salen de nuevo()
+  const [formularios, setFormularios] = useState<Formulario[]>(() => [{ clave: 0, datos: formVacio() }]);
   const [guardando, setGuardando] = useState(false);
+
+  function nuevo(): Formulario {
+    ultimaClave.current += 1;
+    return { clave: ultimaClave.current, datos: formVacio() };
+  }
+
+  function agregar() {
+    const formulario = nuevo();
+    setFormularios((prev) => [...prev, formulario]);
+  }
 
   function cambiar(clave: number, parcial: Partial<FormProducto>) {
     setFormularios((prev) =>
@@ -72,7 +83,7 @@ export default function TabAgregar({ onGuardar, onAviso }: Readonly<Props>) {
       ))}
 
       <div className="admin-acciones">
-        <button type="button" className="btn btn-borde" onClick={() => setFormularios((p) => [...p, nuevo()])}>
+        <button type="button" className="btn btn-borde" onClick={agregar}>
           + Agregar otro producto
         </button>
         <button type="button" className="btn btn-primario" disabled={guardando} onClick={() => void guardar()}>

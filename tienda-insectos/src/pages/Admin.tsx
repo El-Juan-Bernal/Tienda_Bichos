@@ -2,9 +2,19 @@ import { useEffect, useState } from 'react';
 import { useAdminProductos } from '../hooks/useAdminProductos';
 import type { MostrarToast } from '../types/toast';
 import TabAgregar from '../components/admin/TabAgregar';
+import TabAuditoria from '../components/admin/TabAuditoria.tsx';
 import TabInventario from '../components/admin/TabInventario';
+import TabReportes from '../components/admin/TabReportes';
+import '../styles/admin-analitica.css';
 
-type Pestana = 'agregar' | 'inventario';
+type Pestana = 'inventario' | 'agregar' | 'reportes' | 'auditoria';
+
+const PESTANAS: { id: Pestana; texto: string }[] = [
+  { id: 'inventario', texto: 'Inventario y ofertas' },
+  { id: 'agregar', texto: 'Agregar producto' },
+  { id: 'reportes', texto: 'Reportes' },
+  { id: 'auditoria', texto: 'Auditoría' },
+];
 
 export default function Admin({ mostrarToast }: Readonly<{ mostrarToast: MostrarToast }>) {
   const api = useAdminProductos(mostrarToast);
@@ -25,31 +35,24 @@ export default function Admin({ mostrarToast }: Readonly<{ mostrarToast: Mostrar
       </header>
 
       <div className="admin-pestanas" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={pestana === 'inventario'}
-          className={pestana === 'inventario' ? 'admin-pestana activa' : 'admin-pestana'}
-          onClick={() => setPestana('inventario')}
-        >
-          Inventario y ofertas
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={pestana === 'agregar'}
-          className={pestana === 'agregar' ? 'admin-pestana activa' : 'admin-pestana'}
-          onClick={() => setPestana('agregar')}
-        >
-          Agregar producto
-        </button>
+        {PESTANAS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            role="tab"
+            aria-selected={pestana === p.id}
+            className={pestana === p.id ? 'admin-pestana activa' : 'admin-pestana'}
+            onClick={() => setPestana(p.id)}
+          >
+            {p.texto}
+          </button>
+        ))}
       </div>
 
-      {pestana === 'inventario' ? (
-        <TabInventario api={api} onAviso={avisar} />
-      ) : (
-        <TabAgregar onGuardar={api.crear} onAviso={avisar} />
-      )}
+      {pestana === 'inventario' && <TabInventario api={api} onAviso={avisar} />}
+      {pestana === 'agregar' && <TabAgregar onGuardar={api.crear} onAviso={avisar} />}
+      {pestana === 'reportes' && <TabReportes mostrarToast={mostrarToast} />}
+      {pestana === 'auditoria' && <TabAuditoria mostrarToast={mostrarToast} />}
     </section>
   );
 }

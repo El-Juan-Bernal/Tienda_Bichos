@@ -17,18 +17,20 @@ export function usePedidos(mostrarToast: MostrarToast) {
   const [error, setError] = useState('');
   const [cancelando, setCancelando] = useState(false);
 
-  const cargar = useCallback(async () => {
-    if (!account) return;
-    try {
-      const datos = await listarPedidos({ instance, account });
-      // Un pedido sin pagar (CREADO) todavía no es un pedido para el cliente.
-      setPedidos(datos.filter((p) => p.estado !== 'CREADO').sort((a, b) => b.id - a.id));
-      setError('');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setCargando(false);
-    }
+  // Se usa .then() y no async/await: así los setState quedan dentro de callbacks
+  // y la regla react-hooks/set-state-in-effect no los confunde con llamadas directas.
+  const cargar = useCallback((): Promise<void> => {
+    if (!account) return Promise.resolve();
+    return listarPedidos({ instance, account })
+      .then((datos) => {
+        // Un pedido sin pagar (CREADO) todavía no es un pedido para el cliente.
+        setPedidos(datos.filter((p) => p.estado !== 'CREADO').sort((a, b) => b.id - a.id));
+        setError('');
+      })
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => setCargando(false));
   }, [instance, account]);
 
   // Carga inicial y refresco automático (se pausa si la pestaña no está a la vista).
