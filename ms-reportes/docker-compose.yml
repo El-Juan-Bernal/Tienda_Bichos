@@ -1,0 +1,17 @@
+services:
+  reportes:
+    build: .
+    container_name: ms_reportes
+    ports:
+      - "8088:8088"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms128m -Xmx256m
+      - KAFKA_BOOTSTRAP_SERVERS=${KAFKA_BOOTSTRAP_SERVERS}
+      - STATE_DIR=/data/estado-streams
+    volumes:
+      # Guarda el estado de Kafka Streams. Para borrarlo: docker compose down -v
+      - reportes_estado:/data
+    restart: unless-stopped
+
+volumes:
+  reportes_estado:

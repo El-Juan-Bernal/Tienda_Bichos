@@ -1,0 +1,8 @@
+target
+estado-streams
+.env
+.env.*
+.git
+.gitignore
+.vscode
+*.md
