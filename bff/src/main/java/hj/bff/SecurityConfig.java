@@ -35,6 +35,9 @@ public class SecurityConfig {
             SessionCreationPolicy.STATELESS
         ))
         .authorizeHttpRequests(auth -> auth
+            // Documentación Swagger: solo lectura, sin token (los endpoints siguen protegidos)
+            .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**",
+                "/v3/api-docs", "/v3/api-docs/**").permitAll()
             .requestMatchers(HttpMethod.GET, "/api/data").hasAuthority(SCOPE_USER)
             // Destacados de la página de inicio: público, sin token
             .requestMatchers(HttpMethod.GET, "/api/productos/destacados").permitAll()
@@ -90,4 +93,3 @@ public class SecurityConfig {
     return source;
   }
 }
-

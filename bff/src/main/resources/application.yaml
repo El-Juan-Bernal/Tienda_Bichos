@@ -32,3 +32,13 @@ microservices:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
+# Swagger: interfaz en /swagger-ui.html y especificación en /v3/api-docs.
+# Es solo documentación (los endpoints siguen protegidos). Para apagarlo: SWAGGER_ENABLED=false
+springdoc:
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+    path: /swagger-ui.html
+    tags-sorter: alpha

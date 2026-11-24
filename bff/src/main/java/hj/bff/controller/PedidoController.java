@@ -1,5 +1,9 @@
 package hj.bff.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,11 +25,14 @@ import org.springframework.web.client.RestClientResponseException;
 
 @RestController
 @RequestMapping("/api/pedidos")
+@Tag(name = "Pedidos",
+    description = "Pedidos del usuario autenticado. El dueño sale siempre del token, nunca del cuerpo de la petición.")
 public class PedidoController {
 
     private static final String[] CLAIMS_CORREO = {"preferred_username", "email", "upn", "unique_name"};
     private static final String CLAVE_ERROR = "error";
     private static final String MSG_NO_ENCONTRADO = "Pedido no encontrado.";
+    private static final String DESC_ID = "Id del pedido";
 
     private final RestClient msPedidosClient;
 
@@ -38,6 +45,8 @@ public class PedidoController {
     }
 
         // Crear pedido: el dueño siempre es el usuario del token, no el que envíe el front
+    @Operation(summary = "Crear un pedido",
+        description = "Requiere un usuario autenticado. El campo 'usuario' se reemplaza por el correo del token.")
     @PostMapping
     public ResponseEntity<Object> procesarPedido(
             @RequestBody Map<String, Object> pedidoRequest,
@@ -63,6 +72,8 @@ public class PedidoController {
     }
 
     // Mis pedidos: siempre filtrados por el correo del token
+    @Operation(summary = "Mis pedidos",
+        description = "Devuelve solo los pedidos del usuario del token.")
     @GetMapping
     public ResponseEntity<Object> misPedidos(@AuthenticationPrincipal Jwt jwt) {
         String correo = correoDe(jwt);
@@ -79,8 +90,12 @@ public class PedidoController {
         }
     }
 
+    @Operation(summary = "Historial de estados de un pedido",
+        description = "Solo si el pedido pertenece al usuario del token; si no, responde 404.")
+    @ApiResponse(responseCode = "404", description = "El pedido no existe o no es del usuario")
     @GetMapping("/{id}/historial")
-    public ResponseEntity<Object> historial(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Object> historial(
+            @Parameter(description = DESC_ID) @PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         String correo = correoDe(jwt);
         if (correo == null) {
             return sinCorreo();
@@ -103,9 +118,14 @@ public class PedidoController {
     }
 
     // El cliente solo puede ACEPTAR (pagar) o CANCELAR; el resto de los estados avanza solo
+    @Operation(summary = "Aceptar (pagar) o cancelar un pedido",
+        description = "Cuerpo: {\"nuevoEstado\": \"ACEPTADO\"} o {\"nuevoEstado\": \"CANCELADO\"}. "
+            + "Los demás estados avanzan solos.")
+    @ApiResponse(responseCode = "403", description = "El cliente solo puede aceptar o cancelar")
+    @ApiResponse(responseCode = "404", description = "El pedido no existe o no es del usuario")
     @PatchMapping("/{id}/estado")
     public ResponseEntity<Object> actualizarEstado(
-            @PathVariable Long id,
+            @Parameter(description = DESC_ID) @PathVariable Long id,
             @RequestBody Map<String, Object> estadoRequest,
             @AuthenticationPrincipal Jwt jwt) {
         String correo = correoDe(jwt);
@@ -142,8 +162,11 @@ public class PedidoController {
         }
     }
 
+    @Operation(summary = "Cancelar un pedido",
+        description = "Solo desde ACEPTADO o EN_PREPARACION, y solo si el pedido es del usuario del token.")
     @PatchMapping("/{id}/cancelar")
-    public ResponseEntity<Object> cancelar(@PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<Object> cancelar(
+            @Parameter(description = DESC_ID) @PathVariable Long id, @AuthenticationPrincipal Jwt jwt) {
         String correo = correoDe(jwt);
         if (correo == null) {
             return sinCorreo();
@@ -210,4 +233,3 @@ public class PedidoController {
                 .body(respuesta);
     }
 }
-

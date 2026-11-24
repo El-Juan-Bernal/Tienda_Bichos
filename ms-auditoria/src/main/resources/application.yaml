@@ -43,3 +43,10 @@ kafka:
     audit-timeline: ${KAFKA_TOPIC_AUDIT:audit.timeline}
     dlt: ${KAFKA_TOPIC_DLT:orders.events.audit.DLT}
 
+# Swagger: interfaz en /swagger-ui.html y especificación en /v3/api-docs
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
