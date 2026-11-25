@@ -85,6 +85,7 @@ Iniciar-Servicio "ms-pedidos"
 Iniciar-Servicio "ms-notificaciones"
 Iniciar-Servicio "ms-auditoria"
 Iniciar-Servicio "ms-reportes"
+Iniciar-Servicio "ms-rabbit-admin"
 
 # 3. ms-catalogo solo cuando ms-notificaciones ya responde
 if (Esperar-Puerto 8085 "ms-notificaciones") {

@@ -1,0 +1,28 @@
+server:
+  port: ${SERVER_PORT:8091}
+
+spring:
+  application:
+    name: ms-rabbit-admin
+
+# Brokers que administra este servicio. Se habla con su API HTTP de administración
+# (puerto 15672 el principal y 15673 el de proveedores). El usuario debe tener el tag "administrator".
+rabbit-admin:
+  vhost: ${RABBIT_VHOST:/}
+  brokers:
+    principal:
+      url: ${RABBIT_PRINCIPAL_URL:http://localhost:15672}
+      usuario: ${RABBIT_USER:guest}
+      clave: ${RABBIT_PASS:guest}
+    proveedores:
+      url: ${RABBIT_PROVEEDORES_URL:http://localhost:15673}
+      usuario: ${RABBIT_USER:guest}
+      clave: ${RABBIT_PASS:guest}
+
+# Swagger: interfaz en /swagger-ui.html y especificación en /v3/api-docs
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha

@@ -11,6 +11,7 @@ $servicios = [ordered]@{
     "ms-kafka-admin"    = 8087
     "ms-reportes"       = 8088
     "ms-auditoria"      = 8089
+    "ms-rabbit-admin"   = 8091
 }
 
 foreach ($nombre in $servicios.Keys) {
